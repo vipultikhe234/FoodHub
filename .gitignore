@@ -1,0 +1,34 @@
+# Node & Dependencies
+node_modules/
+admin/node_modules/
+mobile/node_modules/
+backend/node_modules/
+backend/vendor/
+
+# Environment & Secrets
+.env
+admin/.env
+mobile/.env
+backend/.env
+auth.json
+*.key
+
+# Build & Cache
+dist/
+admin/dist/
+mobile/dist/
+backend/public/build/
+backend/public/hot/
+backend/public/storage
+backend/storage/framework/cache/data/*
+backend/storage/framework/sessions/*
+backend/storage/framework/views/*
+backend/storage/logs/*
+backend/.phpunit.cache/
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
