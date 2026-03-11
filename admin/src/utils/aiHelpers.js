@@ -1,5 +1,4 @@
 // ── Fetch a REAL food image ───────────────────────────────────────────────
-// ── Fetch a REAL food image ───────────────────────────────────────────────
 // Smart Router: Foodish API (fast) -> TheMealDB -> Pollinations AI (Prompt based)
 export const fetchRealFoodImage = async (name, randomize = false, description = '') => {
     if (!name.trim()) return '';
@@ -11,15 +10,25 @@ export const fetchRealFoodImage = async (name, randomize = false, description = 
     try {
         // If we have a description, use it for a HIGH QUALITY AI prompt
         if (description && description.length > 20) {
-            const prompt = `Professional food photo of ${name}, ${description}, restaurant style, wooden background, 8k, bokeh, appetizing, high detail`;
+            const prompt = `Professional food photo of ${name}, ${description}, authentic Indian restaurant style, served on a plate, wooden background, 8k resolution, cinematic lighting, bokeh, appetizing, high detail`;
             return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=800&seed=${seed}&nologo=true`;
         }
 
-        // 1️⃣ Fast generic food API
-        const foodishCategories = ['biryani', 'burger', 'butter-chicken', 'dessert', 'dosa', 'idly', 'pasta', 'pizza', 'rice', 'samosa'];
-        const matchedFoodish = foodishCategories.find(c => cleanName.includes(c));
-        if (matchedFoodish) {
-            const res = await fetch(`https://foodish-api.com/api/images/${matchedFoodish}`, { signal: AbortSignal.timeout(3000) });
+        // 1️⃣ Fast generic food API with aliases
+        const aliases = {
+            'idli': 'idly',
+            'dosa': 'dosa',
+            'biryani': 'biryani',
+            'burger': 'burger',
+            'pizza': 'pizza',
+            'pasta': 'pasta',
+            'samosa': 'samosa'
+        };
+
+        const matchedAlias = Object.keys(aliases).find(key => cleanName.includes(key));
+        if (matchedAlias) {
+            const foodishCat = aliases[matchedAlias];
+            const res = await fetch(`https://foodish-api.com/api/images/${foodishCat}`, { signal: AbortSignal.timeout(3000) });
             const data = await res.json();
             if (data.image) return data.image;
         }
@@ -32,8 +41,8 @@ export const fetchRealFoodImage = async (name, randomize = false, description = 
         }
     } catch (_) { }
 
-    // 3️⃣ Final Prompt-based Fallback
-    const fallbackPrompt = `${name} food dish professional photography`;
+    // 3️⃣ Final Prompt-based Fallback (Enhanced for accuracy)
+    const fallbackPrompt = `High-quality professional food photography of ${name} dish, authentic Indian cuisine, close-up shot, appetizing presentation, 4k, gourmet style`;
     return `https://image.pollinations.ai/prompt/${encodeURIComponent(fallbackPrompt)}?width=800&height=800&seed=${seed}&nologo=true`;
 };
 

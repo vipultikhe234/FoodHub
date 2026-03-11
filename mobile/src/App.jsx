@@ -1,8 +1,17 @@
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { CartProvider, useCart } from './context/CartContext';
+import {
+    Home as HomeIcon,
+    Search as SearchIcon,
+    ShoppingBag,
+    Clock,
+    User,
+    Loader2
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-// ── Lazy-load pages (each page loads only when navigated to) ──────────────
+// ── Lazy-load pages ──────────────────────────────
 const Home = lazy(() => import('./pages/Home'));
 const Cart = lazy(() => import('./pages/Cart'));
 const Login = lazy(() => import('./pages/Login'));
@@ -14,11 +23,16 @@ const Search = lazy(() => import('./pages/Search'));
 const Profile = lazy(() => import('./pages/Profile'));
 const OrderStatus = lazy(() => import('./pages/OrderStatus'));
 
-// ── Minimal spinner shown while a page chunk loads ────────────────────────
+// ── Minimal spinner ────────────────────────
 const PageLoader = () => (
-    <div className="flex flex-col items-center justify-center min-h-screen space-y-3 bg-white">
-        <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-[9px] font-black text-gray-300 uppercase tracking-[0.4em] animate-pulse">Loading...</p>
+    <div className="flex flex-col items-center justify-center min-h-screen space-y-4 bg-white dark:bg-[#0B0F1A]">
+        <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+        >
+            <Loader2 className="w-10 h-10 text-orange-500" />
+        </motion.div>
+        <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] animate-pulse">Syncing Hub...</p>
     </div>
 );
 
@@ -27,7 +41,6 @@ function Navigation() {
     const { cartItems } = useCart();
     const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-    // Define routes where the bottom navigation should be HIDDEN
     const hideOnRoutes = ['/checkout', '/login', '/register', '/order/'];
     const isProductDetail = location.pathname.startsWith('/product/');
     const isHidden = hideOnRoutes.some(route => location.pathname.startsWith(route)) || isProductDetail;
@@ -35,39 +48,57 @@ function Navigation() {
     if (isHidden) return null;
 
     const navLinks = [
-        { to: '/', icon: '🏠', label: 'Home' },
-        { to: '/search', icon: '🔍', label: 'Search' },
-        { to: '/cart', icon: '🛒', label: 'Cart', badge: cartCount },
-        { to: '/orders', icon: '📦', label: 'Orders' },
-        { to: '/profile', icon: '👤', label: 'Profile' },
+        { to: '/', icon: HomeIcon, label: 'Discover' },
+        { to: '/search', icon: SearchIcon, label: 'Search' },
+        { to: '/cart', icon: ShoppingBag, label: 'Cart', badge: cartCount },
+        { to: '/orders', icon: Clock, label: 'Activity' },
+        { to: '/profile', icon: User, label: 'Profile' },
     ];
 
     return (
-        <nav className="fixed bottom-0 w-full bg-white/90 backdrop-blur-2xl border-t border-gray-50 flex justify-around items-center px-2 py-3 pb-6 shadow-[0_-10px_40px_rgba(0,0,0,0.04)] z-40">
-            {navLinks.map(({ to, icon, label, badge }) => {
-                const isActive = location.pathname === to;
-                return (
-                    <Link
-                        key={to}
-                        to={to}
-                        className="flex flex-col items-center gap-1 relative px-3 py-1"
-                    >
-                        <div className={`relative flex items-center justify-center w-12 h-9 rounded-2xl transition-all duration-300 ${isActive ? 'bg-gray-900 shadow-xl shadow-gray-900/20' : 'hover:bg-gray-50'
-                            }`}>
-                            <span className={`text-lg transition-all duration-300 ${isActive ? 'grayscale-0' : 'grayscale opacity-40'
-                                }`}>{icon}</span>
-                            {badge > 0 && (
-                                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-orange-500 text-white text-[8px] font-black rounded-full flex items-center justify-center shadow-lg shadow-orange-500/30">
-                                    {badge > 9 ? '9+' : badge}
-                                </span>
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-md z-50">
+            <nav className="bg-white/80 dark:bg-black/40 backdrop-blur-2xl border border-white/20 dark:border-white/5 flex justify-around items-center p-2 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.15)]">
+                {navLinks.map(({ to, icon: Icon, label, badge }) => {
+                    const isActive = location.pathname === to;
+                    return (
+                        <Link
+                            key={to}
+                            to={to}
+                            className="flex flex-col items-center gap-1.5 py-2 px-1 flex-1 relative"
+                        >
+                            <motion.div
+                                animate={isActive ? { scale: 1.1, y: -4 } : { scale: 1, y: 0 }}
+                                className={`relative flex items-center justify-center w-12 h-10 rounded-2xl transition-all duration-300 ${isActive
+                                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/40'
+                                        : 'text-slate-400 dark:text-gray-500 hover:bg-slate-50 dark:hover:bg-white/5'
+                                    }`}
+                            >
+                                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                                {badge > 0 && (
+                                    <motion.span
+                                        initial={{ scale: 0 }}
+                                        animate={{ scale: 1 }}
+                                        className="absolute -top-1 -right-1 w-5 h-5 bg-black dark:bg-white text-white dark:text-black text-[9px] font-[900] rounded-full flex items-center justify-center shadow-lg border-2 border-white dark:border-gray-900"
+                                    >
+                                        {badge > 9 ? '9+' : badge}
+                                    </motion.span>
+                                )}
+                            </motion.div>
+                            <span className={`text-[8px] font-black uppercase tracking-wider transition-colors ${isActive ? 'text-gray-900 dark:text-white' : 'text-slate-400 dark:text-gray-500'
+                                }`}>
+                                {label}
+                            </span>
+                            {isActive && (
+                                <motion.div
+                                    layoutId="mobileNavDot"
+                                    className="absolute -top-1.5 w-1 h-1 bg-orange-500 rounded-full"
+                                />
                             )}
-                        </div>
-                        <span className={`text-[7px] font-black uppercase tracking-widest transition-colors ${isActive ? 'text-gray-900' : 'text-gray-300'
-                            }`}>{label}</span>
-                    </Link>
-                );
-            })}
-        </nav>
+                        </Link>
+                    );
+                })}
+            </nav>
+        </div>
     );
 }
 
@@ -75,8 +106,8 @@ function App() {
     return (
         <BrowserRouter>
             <CartProvider>
-                <div className="flex flex-col h-screen bg-white">
-                    <main className="flex-1 overflow-y-auto">
+                <div className="flex flex-col min-h-screen bg-[#FDFDFD] dark:bg-[#0B0F1A]">
+                    <main className="flex-1">
                         <Suspense fallback={<PageLoader />}>
                             <Routes>
                                 <Route path="/login" element={<Login />} />

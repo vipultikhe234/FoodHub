@@ -26,20 +26,51 @@ class OrderService
             }
         }
 
-        // 1. Calculate total from items
+        // 1. Calculate base total from items
         $deliveryFee = 49.00;
-        $totalPrice = array_reduce($items, function ($carry, $item) {
+        $subtotal = array_reduce($items, function ($carry, $item) {
             return $carry + ($item['price'] * $item['quantity']);
-        }, 0) + $deliveryFee;
+        }, 0);
 
-        // 2. Wrap order + payment creation in a transaction
-        return \DB::transaction(function () use ($data, $items, $totalPrice) {
+        $discount = 0;
+        $couponId = null;
+
+        // 2. Handle Coupon if provided
+        if (!empty($data['coupon_code'])) {
+            $coupon = \App\Models\Coupon::where('code', $data['coupon_code'])
+                ->where('is_active', true)
+                ->where('expires_at', '>', now())
+                ->first();
+
+            if (!$coupon) {
+                throw new \Exception('The applied coupon is invalid or has expired.');
+            }
+
+            if ($subtotal < $coupon->min_order_amount) {
+                throw new \Exception('Minimum order amount for this coupon is ₹' . $coupon->min_order_amount);
+            }
+
+            if ($coupon->type === 'percentage') {
+                $discount = ($subtotal * $coupon->value) / 100;
+            } else {
+                $discount = $coupon->value;
+            }
+            $couponId = $coupon->id;
+        }
+
+        $totalPrice = ($subtotal + $deliveryFee) - $discount;
+        if ($totalPrice < 0) $totalPrice = 0;
+
+        // 3. Wrap order + payment creation in a transaction
+        return \DB::transaction(function () use ($data, $items, $totalPrice, $discount, $couponId) {
             $orderData = [
                 'user_id'        => $data['user_id'],
                 'total_price'    => $totalPrice,
                 'status'         => 'pending',
                 'payment_status' => 'pending',
                 'address'        => $data['delivery_address'],
+                'discount'       => $discount,
+                'coupon_id'      => $couponId,
             ];
 
             $order = $this->repository->create($orderData, $items);
@@ -50,7 +81,7 @@ class OrderService
                 'status'         => 'pending',
             ]);
 
-            // 3. Stripe PaymentIntent (only if method is stripe)
+            // 4. Stripe PaymentIntent (only if method is stripe)
             if ($data['payment_method'] === 'stripe') {
                 $intent = $this->stripeService->createPaymentIntent($order);
                 if (!$intent['success']) {

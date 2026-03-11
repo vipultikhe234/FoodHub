@@ -4,16 +4,43 @@
 
 @layer base {
     body {
-        @apply bg-gray-50 text-gray-900 overflow-x-hidden;
+        @apply bg-[#FDFDFD] text-slate-900 antialiased font-['Inter'] selection:bg-orange-100 overflow-x-hidden;
         -webkit-tap-highlight-color: transparent;
+        scroll-behavior: smooth;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    r,
+    h6 {
+        @apply font-['Outfit'] tracking-tight;
     }
 }
 
-.no-scrollbar::-webkit-scrollbar {
-    display: none;
+@layer components {
+    .shadow-premium {
+        box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05),
+            0 2px 20px -8px rgba(0, 0, 0, 0.03);
+    }
+
+    .shadow-glass {
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+            0 10px 40px -10px rgba(0, 0, 0, 0.05);
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
 }
 
-.no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+/* Smooth active states for buttons */
+.btn-active:active {
+    transform: scale(0.95);
 }

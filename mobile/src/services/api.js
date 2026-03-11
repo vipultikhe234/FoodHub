@@ -8,7 +8,7 @@ const api = axios.create({
         'Content-Type': 'application/json',
         'Accept': 'application/json',
     },
-    timeout: 10000, // 10s timeout — fail fast instead of hanging
+    timeout: 30000, // 30s timeout
 });
 
 // ── In-memory cache for GET requests ──────────────────────────────────────
@@ -109,6 +109,11 @@ export const orderService = {
         bustCache('/orders');
         return api.post('/payments/confirm', data);
     },
+};
+
+// ── Coupon Service ─────────────────────────────────────────────────────────
+export const couponService = {
+    validate: (code, amount) => api.post('/coupons/validate', { code, order_amount: amount }),
 };
 
 export default api;

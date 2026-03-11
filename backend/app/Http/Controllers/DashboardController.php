@@ -18,6 +18,8 @@ class DashboardController extends Controller
         $totalRevenue  = Order::whereIn('payment_status', ['paid'])
             ->sum('total_price');
 
+        $totalDiscounts = Order::sum('discount');
+
         $totalUsers    = User::where('role', 'customer')->count();
         $totalProducts = Product::count();
 
@@ -39,6 +41,7 @@ class DashboardController extends Controller
         return response()->json([
             'total_orders'        => $totalOrders,
             'total_revenue'       => (float) $totalRevenue,
+            'total_discounts'     => (float) $totalDiscounts,
             'total_users'         => $totalUsers,
             'total_products'      => $totalProducts,
             'recent_orders_count' => $recentOrders,

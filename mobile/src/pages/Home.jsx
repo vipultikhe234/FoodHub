@@ -1,14 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { productService } from '../services/api';
 import { Link, useNavigate } from 'react-router-dom';
-import { MapPin, User, Search, ChevronRight, Star, Clock, ChefHat, Sparkles } from 'lucide-react';
-import { motion } from 'framer-motion';
+import {
+    MapPin,
+    Search,
+    ChevronRight,
+    Star,
+    Clock,
+    Flame,
+    Heart,
+    Percent,
+    ShoppingBag,
+    Plus,
+    User,
+    ArrowRight
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useCart } from '../context/CartContext';
 
 const Home = () => {
     const navigate = useNavigate();
     const [categories, setCategories] = useState([]);
     const [popularProducts, setPopularProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [activeCategory, setActiveCategory] = useState('All');
+    const { addToCart } = useCart();
+    const user = JSON.parse(localStorage.getItem('user'));
 
     useEffect(() => {
         const fetchData = async () => {
@@ -28,184 +45,220 @@ const Home = () => {
         fetchData();
     }, []);
 
-    if (loading) {
-        return (
-            <div className="p-8 space-y-12 animate-pulse min-h-screen bg-white">
-                <div className="flex justify-between items-center">
-                    <div className="space-y-3">
-                        <div className="h-2 w-20 bg-gray-100/80 rounded-full"></div>
-                        <div className="h-5 w-36 bg-gray-200/80 rounded-full"></div>
-                    </div>
-                    <div className="w-14 h-14 bg-gray-100/80 rounded-full"></div>
-                </div>
-                <div className="h-48 bg-gray-100/80 rounded-[40px]"></div>
-                <div className="space-y-8">
-                    <div className="h-3 w-28 bg-gray-100/80 rounded-full"></div>
-                    <div className="flex gap-6 overflow-hidden">
-                        {[1, 2, 3, 4].map(idx => (
-                            <div key={idx} className="h-24 w-24 bg-gray-100/80 rounded-[28px] shrink-0"></div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    }
+    const filteredProducts = activeCategory === 'All'
+        ? popularProducts
+        : popularProducts.filter(p => p.category?.name === activeCategory);
 
     const containerVariants = {
         hidden: { opacity: 0 },
-        show: {
+        visible: {
             opacity: 1,
             transition: { staggerChildren: 0.1 }
         }
     };
 
     const itemVariants = {
-        hidden: { opacity: 0, y: 20 },
-        show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
+        hidden: { y: 20, opacity: 0 },
+        visible: { y: 0, opacity: 1 }
     };
 
+    if (loading) return (
+        <div className="flex flex-col items-center justify-center min-h-[80vh] space-y-4 bg-white dark:bg-[#0B0F1A]">
+            <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-[10px] font-black text-slate-300 dark:text-gray-500 uppercase tracking-[0.4em] animate-pulse italic">Syncing Menu...</p>
+        </div>
+    );
+
     return (
-        <div className="bg-white min-h-screen pb-28 font-sans selection:bg-orange-500/20">
+        <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="pb-32 bg-[#FDFDFD] dark:bg-[#0B0F1A]"
+        >
             {/* Premium Header */}
-            <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-2xl px-7 py-5 flex justify-between items-center border-b border-gray-50/50">
-                <div className="group cursor-pointer flex flex-col gap-1">
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-1.5">
-                        <MapPin size={10} className="text-orange-500" /> delivering to
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-gray-900 tracking-tight text-base">Central District</span>
-                        <ChevronRight size={14} className="text-orange-500 stroke-[3] opacity-60 group-hover:translate-x-1 transition-transform" />
+            <div className="px-6 pt-8 pb-4 sticky top-0 z-30 bg-[#FDFDFD]/80 dark:bg-[#0B0F1A]/80 backdrop-blur-2xl border-b border-gray-100/50 dark:border-white/5">
+                <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-white dark:bg-gray-800 rounded-2xl shadow-premium flex items-center justify-center border border-gray-100 dark:border-white/5">
+                            <MapPin className="text-orange-500" size={24} />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-widest leading-none mb-1">Delivering to</p>
+                            <div className="flex items-center gap-1">
+                                <span className="text-sm font-black text-gray-900 dark:text-white font-['Outfit']">Central District</span>
+                                <ChevronRight size={14} className="text-orange-500" />
+                            </div>
+                        </div>
+                    </div>
+                    <Link to="/profile" className="group relative">
+                        <div className="w-12 h-12 bg-slate-900 dark:bg-white rounded-2xl flex items-center justify-center text-white dark:text-slate-900 shadow-xl shadow-slate-900/10 active:scale-90 transition-transform border-2 border-white dark:border-gray-800">
+                            {user?.name ? (
+                                <span className="font-extrabold text-sm uppercase">{user.name[0]}</span>
+                            ) : (
+                                <User size={20} strokeWidth={2.5} />
+                            )}
+                        </div>
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full border-2 border-[#FDFDFD] dark:border-[#0B0F1A]"></span>
+                    </Link>
+                </div>
+
+                <div className="flex items-center gap-2 mb-2">
+                    <h1 className="text-3xl font-[900] text-gray-900 dark:text-white font-['Outfit'] tracking-tighter leading-none">
+                        Hi, {user?.name?.split(' ')[0] || 'Gourmet'}!
+                    </h1>
+                    <Flame className="text-orange-500 fill-orange-500" size={24} />
+                </div>
+                <p className="text-slate-400 text-xs font-medium">Ready for your daily treat?</p>
+            </div>
+
+            {/* Quick Search */}
+            <motion.div variants={itemVariants} className="px-6 mt-6 mb-8">
+                <div
+                    onClick={() => navigate('/search')}
+                    className="flex items-center gap-4 bg-white dark:bg-gray-800/40 p-5 rounded-[28px] shadow-sm border border-gray-100 dark:border-white/10 group active:scale-[0.98] transition-all cursor-pointer"
+                >
+                    <div className="w-10 h-10 bg-slate-50 dark:bg-white/5 rounded-2xl flex items-center justify-center text-slate-400 dark:text-gray-500 group-hover:text-orange-500 transition-colors">
+                        <Search size={20} strokeWidth={2.5} />
+                    </div>
+                    <span className="text-slate-400 dark:text-gray-500 font-bold text-sm">Search for burgers, pizza...</span>
+                </div>
+            </motion.div>
+
+            {/* Promo slider - Animated Banners */}
+            <motion.div variants={itemVariants} className="px-6 mb-10">
+                <div className="bg-gray-900 dark:bg-indigo-900 rounded-[40px] p-8 text-white relative overflow-hidden flex flex-col justify-center h-48 shadow-2xl group">
+                    <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+                        className="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-br from-orange-500/30 to-transparent rounded-full blur-[40px]"
+                    />
+                    <div className="relative z-10 w-2/3">
+                        <span className="bg-orange-500 text-white text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest mb-4 inline-block shadow-lg">New User Offer</span>
+                        <h3 className="text-3xl font-[900] text-white font-['Outfit'] leading-none italic mb-2 tracking-tighter">FREE DELIVERY</h3>
+                        <p className="text-white/60 text-xs font-bold uppercase tracking-widest">Valid on your first 3 orders</p>
+                    </div>
+                    <div className="absolute -bottom-6 -right-6 w-36 h-36 bg-white/10 rounded-full border border-white/20 flex items-center justify-center p-3 backdrop-blur-md">
+                        <div className="w-full h-full bg-orange-500 rounded-full animate-pulse shadow-2xl flex items-center justify-center text-white font-black text-2xl font-['Outfit']">50%</div>
                     </div>
                 </div>
-                <Link to="/profile" className="relative group">
-                    <div className="w-12 h-12 bg-gray-50 rounded-full border border-gray-100 flex items-center justify-center text-gray-600 shadow-sm group-active:scale-95 transition-all">
-                        <User size={20} className="stroke-[2.5]" />
-                    </div>
-                    <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-orange-500 rounded-full border-[2.5px] border-white z-10"></span>
-                </Link>
-            </header>
+            </motion.div>
 
-            <motion.div variants={containerVariants} initial="hidden" animate="show">
-                {/* Search Header */}
-                <motion.div variants={itemVariants} className="px-7 mt-8 mb-8">
-                    <h1 className="text-4xl font-black italic tracking-tighter text-gray-900 leading-[1.1] mb-6">
-                        What are you<br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-500">craving</span> today?
-                    </h1>
-
-                    <div onClick={() => navigate('/search')} className="group w-full p-4.5 bg-gray-50/80 rounded-[28px] border border-gray-100 flex items-center gap-4 text-gray-400 cursor-text shadow-inner transition-all hover:bg-gray-50 relative overflow-hidden">
-                        <div className="bg-white p-2.5 rounded-[18px] shadow-sm">
-                            <Search size={18} className="text-orange-500 stroke-[3]" />
+            {/* Horizontal Categories */}
+            <motion.div variants={itemVariants} className="mb-12">
+                <div className="px-6 flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-[900] text-gray-900 dark:text-white font-['Outfit'] tracking-tight italic uppercase">Menu Index</h2>
+                    <Link to="/search" className="text-[10px] font-black text-orange-500 uppercase tracking-[0.2em] flex items-center gap-1 hover:underline">See All <ArrowRight size={12} /></Link>
+                </div>
+                <div className="flex gap-4 overflow-x-auto px-6 no-scrollbar items-center">
+                    <button
+                        onClick={() => setActiveCategory('All')}
+                        className={`flex flex-col items-center gap-3 group transition-all shrink-0`}
+                    >
+                        <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center transition-all duration-300 ${activeCategory === 'All'
+                                ? 'bg-orange-500 text-white shadow-xl shadow-orange-500/30 -translate-y-1'
+                                : 'bg-white dark:bg-gray-800 text-slate-400 dark:text-gray-500 border border-gray-100 dark:border-white/5 shadow-sm'
+                            }`}>
+                            <Flame size={24} strokeWidth={2.5} />
                         </div>
-                        <span className="font-bold text-sm text-gray-400">Search for burgers, pizza...</span>
-                    </div>
-                </motion.div>
-
-                {/* Animated Banner */}
-                <motion.div variants={itemVariants} className="px-7 mb-10">
-                    <div className="bg-gray-900 rounded-[40px] p-8 text-white relative overflow-hidden flex flex-col justify-center h-48 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] group">
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-                            className="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-br from-orange-500/20 to-amber-500/5 rounded-full blur-[40px]"
-                        />
-                        <div className="absolute top-6 right-6">
-                            <ChefHat size={24} className="text-white/20" />
-                        </div>
-                        <div className="relative z-10 w-2/3">
-                            <div className="flex items-center gap-2 mb-3">
-                                <Sparkles size={12} className="text-amber-400" />
-                                <span className="text-[9px] font-black uppercase tracking-[0.3em] text-amber-400">Exclusive</span>
-                            </div>
-                            <h3 className="text-3xl font-black italic tracking-tighter leading-none mb-2">Free Delivery</h3>
-                            <p className="text-xs font-medium text-gray-300">On your first premium order.</p>
-                        </div>
-
-                        {/* Decorative image bubble right */}
-                        <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-orange-500 rounded-full flex items-center justify-center p-2 shadow-inner border-4 border-gray-900">
-                            <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=200&auto=format&fit=crop" className="w-full h-full object-cover rounded-full" alt="Promo" />
-                        </div>
-                    </div>
-                </motion.div>
-
-                {/* Category Carousel */}
-                <motion.div variants={itemVariants} className="mb-10">
-                    <div className="px-7 flex justify-between items-end mb-5">
-                        <h3 className="text-[12px] font-black text-gray-900 uppercase tracking-widest">Categories</h3>
-                        <span className="text-[10px] font-bold text-orange-500 uppercase flex items-center gap-1 active:opacity-50">See All <ChevronRight size={12} /></span>
-                    </div>
-                    <div className="flex overflow-x-auto space-x-4 px-7 pb-4 no-scrollbar snap-x">
-                        {categories.map((cat, i) => (
-                            <motion.div
-                                whileTap={{ scale: 0.95 }}
-                                key={cat.id}
-                                onClick={() => navigate(`/search?q=${cat.name}`)}
-                                className="snap-start flex flex-col items-center flex-shrink-0 group cursor-pointer space-y-3"
-                            >
-                                <div className="w-[72px] h-[72px] bg-white rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(0,0,0,0.04)] border border-gray-50 group-hover:border-orange-100 transition-all overflow-hidden relative">
-                                    {cat.image_url ? (
-                                        <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover p-1.5 rounded-full" />
-                                    ) : (
-                                        <ChefHat size={28} className="text-gray-300 group-hover:text-orange-400 transition-colors" />
-                                    )}
+                        <span className={`text-[10px] font-black uppercase tracking-wider ${activeCategory === 'All' ? 'text-orange-500' : 'text-slate-400'}`}>All</span>
+                    </button>
+                    {categories.map((cat) => (
+                        <button
+                            key={cat.id}
+                            onClick={() => setActiveCategory(cat.name)}
+                            className="flex flex-col items-center gap-3 group transition-all shrink-0"
+                        >
+                            <div className={`w-16 h-16 rounded-[24px] overflow-hidden transition-all duration-300 p-0.5 ${activeCategory === cat.name
+                                    ? 'bg-orange-500 shadow-xl shadow-orange-500/30 -translate-y-1'
+                                    : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-white/5 shadow-sm'
+                                }`}>
+                                <div className="w-full h-full bg-white dark:bg-gray-900 rounded-[22px] overflow-hidden">
+                                    <img src={cat.image_url} alt={cat.name} className={`w-full h-full object-cover transition-all duration-500 ${activeCategory === cat.name ? 'scale-110' : 'grayscale group-hover:grayscale-0'}`} />
                                 </div>
-                                <span className="text-[10px] font-black text-gray-600 uppercase tracking-wider group-hover:text-gray-900 transition-colors">{cat.name}</span>
+                            </div>
+                            <span className={`text-[10px] font-black uppercase tracking-wider ${activeCategory === cat.name ? 'text-orange-500' : 'text-slate-400'}`}>{cat.name}</span>
+                        </button>
+                    ))}
+                </div>
+            </motion.div>
+
+            {/* Trending Feed */}
+            <div className="px-6 mb-10">
+                <h2 className="text-xl font-[900] text-gray-900 dark:text-white font-['Outfit'] tracking-tight italic uppercase mb-8">Trending Now</h2>
+                <div className="grid grid-cols-2 gap-x-5 gap-y-10">
+                    <AnimatePresence mode="popLayout">
+                        {filteredProducts.slice(0, 8).map((p, idx) => (
+                            <motion.div
+                                key={p.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{ delay: idx * 0.05 }}
+                                className="group"
+                            >
+                                <Link to={`/product/${p.id}`} className="block">
+                                    <div className="aspect-[4/5] bg-slate-50 dark:bg-white/5 rounded-[40px] overflow-hidden mb-4 relative shadow-sm group-hover:shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
+                                        <img src={p.image_url} alt={p.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                        <div className="absolute top-4 left-4">
+                                            <div className="bg-white/90 dark:bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-sm flex items-center gap-1.5 border border-white/20">
+                                                <Star size={10} className="text-amber-400 fill-amber-400 border-none" />
+                                                <span className="text-[10px] font-black text-gray-900 dark:text-white leading-none mt-0.5">4.9</span>
+                                            </div>
+                                        </div>
+                                        <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center">
+                                            <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-xl text-white flex items-center gap-1.5 border border-white/10">
+                                                <Clock size={10} />
+                                                <span className="text-[9px] font-black uppercase tracking-tighter">15-20 min</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="px-2">
+                                        <h4 className="text-sm font-[900] text-gray-900 dark:text-white truncate mb-1 font-['Outfit'] uppercase tracking-tight">{p.name}</h4>
+                                        <p className="text-[10px] text-slate-400 dark:text-gray-500 font-bold uppercase tracking-wider mb-4 italic truncate">
+                                            {p.category?.name || 'Gourmet'} · Exclusive
+                                        </p>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] font-black text-slate-300 dark:text-gray-600 uppercase tracking-widest leading-none mb-1">Price</span>
+                                                <span className="text-lg font-[900] text-gray-900 dark:text-white font-['Outfit'] tracking-tighter italic">₹{parseFloat(p.price).toFixed(0)}</span>
+                                            </div>
+                                            <motion.button
+                                                whileTap={{ scale: 0.9 }}
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    addToCart(p);
+                                                }}
+                                                className="w-12 h-12 bg-slate-900 dark:bg-orange-500 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-slate-900/10 active:bg-orange-600 transition-colors"
+                                            >
+                                                <Plus size={24} strokeWidth={3} />
+                                            </motion.button>
+                                        </div>
+                                    </div>
+                                </Link>
                             </motion.div>
                         ))}
+                    </AnimatePresence>
+                </div>
+            </div>
+
+            {/* Premium Membership Banner */}
+            <motion.div variants={itemVariants} className="px-6 mb-10">
+                <div className="bg-orange-500 rounded-[44px] p-10 text-white relative overflow-hidden shadow-2xl shadow-orange-500/30">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-white/20 rounded-full blur-[60px] -translate-y-12 translate-x-12"></div>
+                    <div className="relative z-10 pr-12">
+                        <h3 className="text-2xl font-[900] font-['Outfit'] leading-tight mb-4 tracking-tighter">JOIN THE FOODHUB GOLD CLUB</h3>
+                        <p className="text-white/80 text-xs font-medium leading-relaxed mb-8 italic">Unlock priority delivery, exclusive cuisines, and zero delivery charges on every order.</p>
+                        <button className="bg-white text-gray-900 px-8 py-3.5 rounded-2xl text-[10px] font-[900] uppercase tracking-[0.2em] shadow-xl hover:bg-slate-50 active:scale-95 transition-all">Start 30-Day Trial</button>
                     </div>
-                </motion.div>
-
-                {/* Popular Discovery Grid */}
-                <motion.div variants={itemVariants} className="px-7 mb-6">
-                    <div className="flex justify-between items-end mb-6">
-                        <h3 className="text-[12px] font-black text-gray-900 uppercase tracking-widest">Trending Now</h3>
+                    <div className="absolute bottom-4 right-8 opacity-10">
+                        <ShoppingBag size={180} />
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        {popularProducts.slice(0, 6).map((prod) => (
-                            <Link to={`/product/${prod.id}`} key={prod.id} className="group block h-full">
-                                <div className="bg-white rounded-[28px] p-2.5 pb-5 h-full flex flex-col border border-gray-100 shadow-[0_8px_24px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300">
-                                    <div className="w-full aspect-square rounded-[20px] mb-3 relative overflow-hidden bg-gray-50">
-                                        {prod.image_url ? (
-                                            <img src={prod.image_url} alt={prod.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center"><ChefHat size={32} className="text-gray-200" /></div>
-                                        )}
-
-                                        {/* Overlay badges */}
-                                        <div className="absolute top-2 left-2">
-                                            <div className="bg-white/90 backdrop-blur-sm px-2 py-1 rounded-xl flex items-center gap-1 shadow-sm">
-                                                <Star size={8} className="text-amber-400 fill-amber-400" />
-                                                <span className="text-[9px] font-black text-gray-900">{parseFloat(prod.avg_rating || 4.5).toFixed(1)}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="px-1.5 flex flex-col flex-1 justify-between">
-                                        <div>
-                                            <h4 className="font-extrabold text-gray-900 text-[13px] leading-snug mb-1 line-clamp-1">{prod.name}</h4>
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider line-clamp-1 mb-2">
-                                                {prod.category?.name || 'Gourmet'}
-                                            </p>
-                                        </div>
-
-                                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-50">
-                                            <div className="flex items-start">
-                                                <span className="text-[10px] font-black text-orange-500 mt-0.5">₹</span>
-                                                <span className="font-black text-gray-900 text-lg tracking-tight leading-none">{parseFloat(prod.price).toFixed(2)}</span>
-                                            </div>
-                                            <div className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center group-hover:bg-orange-500 transition-colors">
-                                                <span className="text-lg font-light leading-none mb-0.5">+</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                </motion.div>
+                </div>
             </motion.div>
-        </div>
+        </motion.div>
     );
 };
 

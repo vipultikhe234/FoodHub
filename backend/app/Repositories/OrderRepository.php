@@ -10,17 +10,17 @@ class OrderRepository
 {
     public function getAll()
     {
-        return Order::with(['user', 'items.product', 'payment'])->latest()->get();
+        return Order::with(['user', 'items.product', 'payment', 'coupon'])->latest()->get();
     }
 
     public function findById($id)
     {
-        return Order::with(['user', 'items.product', 'payment'])->find($id);
+        return Order::with(['user', 'items.product', 'payment', 'coupon'])->find($id);
     }
 
     public function getUserOrders($userId)
     {
-        return Order::with(['items.product'])->where('user_id', $userId)->latest()->get();
+        return Order::with(['items.product', 'coupon'])->where('user_id', $userId)->latest()->get();
     }
 
     public function create(array $data, array $items)

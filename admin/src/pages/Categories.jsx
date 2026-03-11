@@ -2,6 +2,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import { productService } from '../services/api';
 import api from '../services/api';
 import { fetchRealFoodImage } from '../utils/aiHelpers';
+import {
+    X,
+    Sparkles,
+    Plus,
+    Edit2,
+    Trash2,
+    Image as ImageIcon,
+    LayoutGrid,
+    CheckCircle2,
+    AlertCircle,
+    Activity,
+    Search
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Categories = () => {
     const [categories, setCategories] = useState([]);
@@ -10,6 +24,7 @@ const Categories = () => {
     const [uploading, setUploading] = useState(false);
     const [imgLoading, setImgLoading] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
     const debounceRef = useRef(null);
 
     const [newCategory, setNewCategory] = useState({
@@ -30,40 +45,32 @@ const Categories = () => {
         }
     };
 
-    // ── Typing name → debounce → fetch real image ─────────────────────────
     const handleNameChange = async (e) => {
         const name = e.target.value;
         setNewCategory(prev => ({ ...prev, name }));
-
-        // Don't auto-fetch new AI images if we're just editing an existing category! Keep the old image.
         if (editingId) return;
-
         clearTimeout(debounceRef.current);
-
         if (!name.trim()) {
             setNewCategory(prev => ({ ...prev, name, image: '', image_url: '' }));
             setImgLoading(false);
             return;
         }
-
         setImgLoading(true);
         debounceRef.current = setTimeout(async () => {
             const url = await fetchRealFoodImage(name);
             setNewCategory(prev => ({ ...prev, image: url, image_url: url }));
             setImgLoading(false);
-        }, 700);
+        }, 1500);
     };
 
-    // ── Get a different alternative image ─────────────────────────────────
     const handleRetryImage = async () => {
         if (!newCategory.name.trim()) return;
         setImgLoading(true);
-        const url = await fetchRealFoodImage(newCategory.name, true); // true forces a different random photo
+        const url = await fetchRealFoodImage(newCategory.name, true);
         setNewCategory(prev => ({ ...prev, image: url, image_url: url }));
         setImgLoading(false);
     };
 
-    // ── Manual upload overrides auto image ────────────────────────────────
     const handleImageUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -79,7 +86,7 @@ const Categories = () => {
                 image_url: `http://localhost:8000/storage/${path}`,
             }));
         } catch {
-            alert('Upload failed. Use a valid image format.');
+            alert('Upload failed.');
         } finally {
             setUploading(false);
         }
@@ -98,56 +105,26 @@ const Categories = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        // Form Validation Check
-        if (!newCategory.name.trim()) {
-            return alert('⚠️ Please provide a category name before submitting.');
-        }
-
+        if (!newCategory.name.trim()) return alert('Category name required');
         try {
-            const payload = {
-                name: newCategory.name,
-                image: newCategory.image,
-                status: newCategory.status,
-            };
-
-            if (editingId) {
-                await api.put(`/categories/${editingId}`, payload);
-            } else {
-                await api.post('/categories', payload);
-            }
-
+            const payload = { name: newCategory.name, image: newCategory.image, status: newCategory.status };
+            if (editingId) await api.put(`/categories/${editingId}`, payload);
+            else await api.post('/categories', payload);
             setShowModal(false);
             setEditingId(null);
             fetchData();
             setNewCategory({ name: '', image: '', image_url: '', status: true });
         } catch (err) {
-            alert(`Error ${editingId ? 'updating' : 'creating'} category: ` + (err.response?.data?.message || err.message));
-        }
-    };
-
-    const handleCopyToPlatform = async (platform) => {
-        const { name } = newCategory;
-        if (!name.trim()) return alert('⚠️ Enter a category name first!');
-
-        const text = `📂 Category: ${name}\n📸 Image: ${newCategory.image_url || 'N/A'}`;
-
-        try {
-            await navigator.clipboard.writeText(text);
-            alert(`✅ ${platform} Category Data Bundled!\n\nCategory name and image reference have been copied to your clipboard for your ${platform} Merchant Panel.`);
-        } catch (err) {
-            alert('Failed to copy. Please select and copy manually.');
+            alert(`Error processing request`);
         }
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('This will hide all associated products. Continue?')) {
+        if (window.confirm('Delete category?')) {
             try {
                 await api.delete(`/categories/${id}`);
                 setCategories(prev => prev.filter(c => c.id !== id));
-            } catch {
-                alert('Error deleting category');
-            }
+            } catch { alert('Error deleting category'); }
         }
     };
 
@@ -159,230 +136,247 @@ const Categories = () => {
         clearTimeout(debounceRef.current);
     };
 
+    const filtered = categories.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
     if (loading) return (
-        <div className="flex flex-col items-center justify-center h-full space-y-4">
-            <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-gray-400 font-black text-[10px] uppercase tracking-[0.3em] animate-pulse italic">Loading Categories...</p>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+            <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] animate-pulse">Syncing Categories...</p>
         </div>
     );
 
     return (
-        <div className="space-y-8">
-            {/* Header */}
-            <div className="flex justify-between items-end">
-                <div>
-                    <h1 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tighter italic">Categories</h1>
-                    <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] mt-2 italic">
-                        {categories.length} Groups · Auto real image from name
-                    </p>
+        <div className="space-y-12 pb-20 font-sans">
+            {/* Action Bar */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 bg-white dark:bg-[#111827] p-10 rounded-[48px] shadow-premium border border-gray-100 dark:border-white/5 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2"></div>
+
+                <div className="space-y-2 relative z-10">
+                    <h1 className="text-4xl font-[900] text-gray-900 dark:text-white uppercase tracking-tighter italic font-['Outfit'] leading-none">Categories</h1>
+                    <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-indigo-600 shadow-[0_0_8px_#4f46e5]"></div>
+                        <p className="text-[10px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-widest italic leading-none">{categories.length} Taxonomy Nodes</p>
+                    </div>
                 </div>
-                <button
-                    onClick={() => setShowModal(true)}
-                    className="bg-gray-900 text-white px-8 py-4 rounded-[20px] font-black text-[10px] uppercase tracking-widest hover:bg-orange-500 transition-all shadow-xl shadow-gray-900/20 active:scale-95"
-                >
-                    + New Category
-                </button>
+
+                <div className="flex flex-col sm:flex-row items-center gap-4 relative z-10">
+                    <div className="relative group w-full sm:w-64">
+                        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300">
+                            <Search size={18} />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-white/5 border border-transparent focus:border-indigo-600/20 py-4 pl-14 pr-6 rounded-[24px] text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-4 focus:ring-indigo-600/5 transition-all shadow-inner"
+                        />
+                    </div>
+                    <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setShowModal(true)}
+                        className="w-full sm:w-auto bg-indigo-600 text-white px-10 py-4 rounded-[24px] font-black shadow-2xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all flex items-center justify-center gap-3 text-[10px] uppercase tracking-[0.2em] italic"
+                    >
+                        <Plus size={18} strokeWidth={3} /> Add Category
+                    </motion.button>
+                </div>
             </div>
 
-            {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {categories.length === 0 ? (
-                    <div className="col-span-4 text-center py-20">
-                        <p className="text-6xl mb-4 opacity-10">📂</p>
-                        <p className="text-gray-400 font-black text-[10px] uppercase tracking-[0.4em] italic">No categories yet. Create one!</p>
+            {/* Premium Category Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
+                {filtered.length === 0 ? (
+                    <div className="col-span-full py-40 bg-white dark:bg-[#111827] rounded-[56px] shadow-premium border border-gray-100 dark:border-white/5 flex flex-col items-center justify-center opacity-30">
+                        <LayoutGrid size={64} strokeWidth={1} />
+                        <p className="text-[10px] font-black uppercase tracking-[0.4em] mt-6">No categories detected</p>
                     </div>
                 ) : (
-                    categories.map((cat) => (
-                        <div key={cat.id} className="bg-white dark:bg-gray-800 rounded-[40px] border border-gray-50 dark:border-gray-700 hover:shadow-xl transition-all group relative overflow-hidden">
-                            <div className={`absolute top-0 right-0 w-20 h-20 rounded-bl-full -mr-4 -mt-4 group-hover:scale-150 transition-transform duration-500 ${cat.status ? 'bg-green-500/5' : 'bg-red-500/5'}`}></div>
-                            <div className="w-full h-44 overflow-hidden rounded-t-[40px] bg-gray-100 dark:bg-gray-700">
+                    filtered.map((cat) => (
+                        <motion.div
+                            key={cat.id}
+                            whileHover={{ y: -8 }}
+                            className="bg-white dark:bg-[#111827] rounded-[48px] border border-gray-100 dark:border-white/5 shadow-premium hover:shadow-2xl transition-all group overflow-hidden"
+                        >
+                            <div className="relative h-48 overflow-hidden">
                                 {cat.image_url ? (
-                                    <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                                    <img src={cat.image_url} alt={cat.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-5xl opacity-10">📂</div>
+                                    <div className="w-full h-full bg-slate-50 dark:bg-gray-900 flex items-center justify-center text-slate-200"><LayoutGrid size={48} strokeWidth={1.5} /></div>
                                 )}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60"></div>
+
+                                <div className="absolute top-6 right-6">
+                                    <div className={`px-4 py-1.5 rounded-2xl text-[8px] font-black uppercase tracking-widest backdrop-blur-xl border border-white/20 shadow-2xl ${cat.status ? 'bg-emerald-500/80 text-white' : 'bg-rose-500/80 text-white'
+                                        }`}>
+                                        {cat.status ? 'Active' : 'Offline'}
+                                    </div>
+                                </div>
+
+                                <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
+                                    <div>
+                                        <h4 className="text-xl font-[900] text-white uppercase tracking-tighter italic font-['Outfit'] leading-none mb-1">{cat.name}</h4>
+                                        <div className="flex items-center gap-1.5 opacity-60">
+                                            <div className="w-1 h-1 bg-white rounded-full"></div>
+                                            <p className="text-[8px] text-white font-black uppercase tracking-widest italic leading-none">Node Index {cat.id}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <motion.button
+                                            whileTap={{ scale: 0.9 }}
+                                            onClick={() => handleEdit(cat)}
+                                            className="w-10 h-10 bg-white/20 hover:bg-white/40 backdrop-blur-xl rounded-xl flex items-center justify-center text-white transition-all border border-white/10"
+                                        >
+                                            <Edit2 size={16} strokeWidth={2.5} />
+                                        </motion.button>
+                                        <motion.button
+                                            whileTap={{ scale: 0.9 }}
+                                            onClick={() => handleDelete(cat.id)}
+                                            className="w-10 h-10 bg-rose-500/20 hover:bg-rose-500 backdrop-blur-xl rounded-xl flex items-center justify-center text-white transition-all border border-white/10"
+                                        >
+                                            <Trash2 size={16} strokeWidth={2.5} />
+                                        </motion.button>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="p-5">
-                                <h4 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tighter italic mb-2">{cat.name}</h4>
-                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${cat.status ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                                    <span className={`w-1 h-1 rounded-full ${cat.status ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-                                    {cat.status ? 'Active' : 'Archived'}
-                                </span>
+
+                            <div className="p-8 space-y-4">
+                                <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest">
+                                    <span className="text-slate-400">Inventory Status</span>
+                                    <span className={cat.status ? 'text-emerald-500' : 'text-rose-500'}>{cat.status ? 'Fully Operational' : 'Hidden From App'}</span>
+                                </div>
+                                <button
+                                    onClick={() => handleEdit(cat)}
+                                    className="w-full py-4 bg-slate-50 dark:bg-white/5 group-hover:bg-indigo-600 group-hover:text-white rounded-[20px] text-[10px] font-black uppercase tracking-[0.2em] transition-all italic flex items-center justify-center gap-3 text-slate-500"
+                                >
+                                    Manage Category <Plus size={14} strokeWidth={3} className="group-hover:rotate-90 transition-transform" />
+                                </button>
                             </div>
-                            <div className="absolute bottom-5 right-5 flex gap-2">
-                                <button onClick={() => handleEdit(cat)} className="p-2.5 bg-gray-900 text-white rounded-[14px] opacity-40 group-hover:opacity-100 transition-all hover:bg-orange-500 text-sm shadow-xl">✏️</button>
-                                <button onClick={() => handleDelete(cat.id)} className="p-2.5 bg-red-50 text-red-500 rounded-[14px] opacity-40 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white text-sm shadow-xl">🗑️</button>
-                            </div>
-                        </div>
+                        </motion.div>
                     ))
                 )}
             </div>
 
-            {/* Create Modal */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 z-50">
-                    <div className="bg-white dark:bg-gray-800 rounded-[48px] w-full max-w-lg shadow-2xl overflow-hidden animate-modal-in">
-
-                        <div className="px-10 pt-10 pb-6 flex justify-between items-start">
-                            <div>
-                                <h2 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tighter italic">
-                                    {editingId ? 'Edit Category' : 'New Category'}
-                                </h2>
-                                <p className="text-[9px] font-black text-orange-500 uppercase tracking-[0.3em] mt-1 flex items-center gap-1.5">
-                                    {editingId ? 'Modify active group' : (
-                                        <>
-                                            <span className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></span>
-                                            Auto real photo from TheMealDB
-                                        </>
-                                    )}
-                                </p>
-                            </div>
-                            <button onClick={resetModal} className="w-10 h-10 bg-gray-50 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 transition font-black text-lg">✕</button>
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="px-10 pb-10 space-y-6">
-
-                            {/* Name → triggers image fetch */}
-                            <div>
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mb-3">Category Name</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Pizza, Biryani, Burgers..."
-                                    required
-                                    value={newCategory.name}
-                                    onChange={handleNameChange}
-                                    className="w-full p-5 bg-gray-50 dark:bg-gray-700 rounded-[24px] border-2 border-transparent focus:border-orange-500 outline-none font-black text-gray-900 dark:text-white placeholder:text-gray-300 placeholder:font-medium transition-all"
-                                />
-                                {imgLoading && (
-                                    <p className="text-[9px] font-black text-orange-400 mt-2 ml-2 uppercase tracking-widest animate-pulse">
-                                        🔍 Finding real food photo...
-                                    </p>
-                                )}
-                                {!imgLoading && newCategory.image_url && (
-                                    <p className="text-[9px] font-black text-green-500 mt-2 ml-2 uppercase tracking-widest">
-                                        ✅ Real photo found!
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Image Preview */}
-                            <div>
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mb-3">
-                                    Category Image
-                                    {newCategory.image_url && !imgLoading && !editingId && <span className="ml-2 text-orange-500">· Auto Fetched</span>}
-                                </label>
-
-                                <div className="relative rounded-[28px] overflow-hidden bg-gray-100 dark:bg-gray-700 h-52 border-2 border-dashed border-gray-100 dark:border-gray-600 group hover:border-orange-500/40 transition-all cursor-pointer">
-                                    {imgLoading ? (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gray-50 dark:bg-gray-700">
-                                            <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-                                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.3em] animate-pulse">Fetching real photo...</p>
-                                        </div>
-                                    ) : newCategory.image_url ? (
-                                        <>
-                                            <img
-                                                src={newCategory.image_url}
-                                                alt="preview"
-                                                className="w-full h-full object-cover"
-                                            />
-                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 flex items-center justify-center transition-all">
-                                                <p className="text-white font-black text-[9px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity text-center px-4">
-                                                    📁 Click to upload your own
-                                                </p>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                                            <span className="text-5xl opacity-20">📷</span>
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em]">Type a name to auto-fetch photo</p>
-                                        </div>
-                                    )}
-                                    <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" disabled={uploading || imgLoading} />
-                                    {uploading && (
-                                        <div className="absolute inset-0 bg-white/80 dark:bg-gray-800/80 flex items-center justify-center">
-                                            <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="flex items-center justify-between mt-2 ml-2">
-                                    <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest">Click image to replace with your own upload</p>
-
-                                    {newCategory.name.trim() && !imgLoading && (
-                                        <button
-                                            type="button"
-                                            onClick={handleRetryImage}
-                                            className="text-[9px] font-black text-orange-500 uppercase tracking-widest hover:text-orange-600 bg-orange-50 dark:bg-orange-500/10 px-3 py-1.5 rounded-full transition-colors active:scale-95 border border-orange-100 dark:border-orange-500/20 shadow-sm"
-                                        >
-                                            {editingId ? '✨ Generate AI Image' : '🔄 Get Different Photo'}
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Visibility Toggle */}
-                            <div className="flex items-center gap-4 cursor-pointer" onClick={() => setNewCategory(prev => ({ ...prev, status: !prev.status }))}>
-                                <div className={`w-14 h-7 rounded-full transition-all relative shrink-0 ${newCategory.status ? 'bg-gray-900' : 'bg-gray-200 dark:bg-gray-600'}`}>
-                                    <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${newCategory.status ? 'left-8' : 'left-1'}`}></div>
-                                </div>
+            {/* Category Modal */}
+            <AnimatePresence>
+                {showModal && (
+                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-2xl flex items-center justify-center p-6 z-[100]">
+                        <motion.div
+                            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 50, scale: 0.95 }}
+                            className="bg-white dark:bg-gray-900 rounded-[56px] w-full max-w-lg shadow-3xl border border-white/10 relative overflow-hidden flex flex-col max-h-[90vh]"
+                        >
+                            <div className="flex justify-between items-center px-10 py-8 border-b border-gray-50 dark:border-white/5 relative z-10 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl">
                                 <div>
-                                    <span className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wide">{newCategory.status ? 'Visible to customers' : 'Hidden from app'}</span>
-                                    <p className="text-[9px] text-gray-400 font-bold">Toggle to show/hide in the app</p>
+                                    <h2 className="text-3xl font-[900] text-gray-900 dark:text-white italic tracking-tighter uppercase font-['Outfit'] leading-none mb-1">
+                                        {editingId ? 'Edit Category' : 'Add Category'}
+                                    </h2>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-600"></div>
+                                        <p className="text-[10px] font-black text-slate-400 dark:text-gray-500 uppercase tracking-widest italic leading-none">Taxonomy Node</p>
+                                    </div>
                                 </div>
+                                <button
+                                    onClick={resetModal}
+                                    className="w-12 h-12 bg-slate-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-all shadow-sm"
+                                >
+                                    <X size={24} strokeWidth={2.5} />
+                                </button>
                             </div>
 
-                            {/* Actions Component - Hub style */}
-                            <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-white/5">
-                                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-[0.4em] mb-4 text-center italic">Platform Distribution Hub</label>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    {/* Swiggy Button */}
-                                    <button
-                                        type="button"
-                                        onClick={() => handleCopyToPlatform('Swiggy')}
-                                        className="flex items-center justify-between p-4 bg-orange-50 dark:bg-orange-500/5 border border-orange-100 dark:border-orange-500/20 rounded-[20px] group transition-all hover:bg-orange-500 hover:scale-[1.02] active:scale-95 shadow-sm"
-                                    >
-                                        <div className="text-left">
-                                            <p className="text-[10px] font-black text-orange-600 group-hover:text-white uppercase tracking-widest leading-none mb-1">Swiggy</p>
-                                            <p className="text-[8px] font-bold text-orange-400 group-hover:text-white/80 uppercase">Copy Data</p>
+                            <div className="flex-1 overflow-y-auto p-10 custom-scrollbar relative z-10 space-y-10">
+                                <form onSubmit={handleSubmit} className="space-y-10">
+                                    {/* Category Image */}
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-2 block italic">Category Image</label>
+                                        <div className="relative group overflow-hidden bg-slate-50 dark:bg-gray-800/50 rounded-[44px] h-[220px] border-4 border-dashed border-slate-100 dark:border-white/5 flex flex-col items-center justify-center transition-all hover:border-indigo-600/30 shadow-inner">
+                                            {imgLoading ? (
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md z-20">
+                                                    <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                                                    <div className="flex items-center gap-3">
+                                                        <Sparkles size={16} className="text-indigo-600 animate-pulse" />
+                                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] animate-pulse italic">Visualizing...</p>
+                                                    </div>
+                                                </div>
+                                            ) : newCategory.image_url ? (
+                                                <div className="w-full h-full relative p-4">
+                                                    <img src={newCategory.image_url} className="w-full h-full object-cover rounded-[32px] shadow-2xl" alt="preview" />
+                                                    <div className="absolute inset-4 rounded-[32px] bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                                                        <div className="flex items-center gap-2 text-white">
+                                                            <ImageIcon size={20} />
+                                                            <span className="text-[10px] font-black uppercase tracking-widest leading-none">Update Visual</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center p-8 flex flex-col items-center gap-6">
+                                                    <div className="w-16 h-16 bg-white dark:bg-gray-900 rounded-[28px] flex items-center justify-center shadow-premium border border-slate-50 dark:border-white/5 opacity-40">
+                                                        <ImageIcon size={32} strokeWidth={1.5} className="text-slate-300" />
+                                                    </div>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] italic">Upload or AI Assist</p>
+                                                </div>
+                                            )}
+                                            <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                                         </div>
-                                        <span className="text-xl group-hover:rotate-12 transition-transform">🚀</span>
-                                    </button>
-
-                                    {/* Zomato Button */}
-                                    <button
-                                        type="button"
-                                        onClick={() => handleCopyToPlatform('Zomato')}
-                                        className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-500/5 border border-red-100 dark:border-red-500/20 rounded-[20px] group transition-all hover:bg-red-500 hover:scale-[1.02] active:scale-95 shadow-sm"
-                                    >
-                                        <div className="text-left">
-                                            <p className="text-[10px] font-black text-red-600 group-hover:text-white uppercase tracking-widest leading-none mb-1">Zomato</p>
-                                            <p className="text-[8px] font-bold text-red-400 group-hover:text-white/80 uppercase">Copy Data</p>
+                                        <div className="flex justify-between items-center px-6">
+                                            <div className="flex items-center gap-2 text-slate-300">
+                                                <AlertCircle size={10} />
+                                                <p className="text-[8px] font-black uppercase tracking-widest italic">Standard Format Required</p>
+                                            </div>
+                                            {newCategory.name.trim() && !imgLoading && (
+                                                <button type="button" onClick={handleRetryImage} className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2 bg-indigo-50 dark:bg-indigo-600/10 px-6 py-2.5 rounded-2xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
+                                                    <Sparkles size={14} strokeWidth={2.5} /> Swatch Update
+                                                </button>
+                                            )}
                                         </div>
-                                        <span className="text-xl group-hover:rotate-12 transition-transform">🔴</span>
-                                    </button>
+                                    </div>
 
-                                    {/* Internal Save Button */}
-                                    <button
+                                    {/* Name Field */}
+                                    <div className="space-y-4">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-2 block italic">Category Name</label>
+                                        <input
+                                            type="text" placeholder="e.g. Italian Platters" required
+                                            className="w-full h-18 bg-slate-50 dark:bg-white/5 px-8 rounded-[24px] focus:ring-4 focus:ring-indigo-600/5 transition-all outline-none font-black text-gray-900 dark:text-white text-xl font-['Outfit'] italic shadow-inner border border-transparent focus:border-indigo-600/20"
+                                            value={newCategory.name} onChange={handleNameChange}
+                                        />
+                                    </div>
+
+                                    {/* Status Toggle */}
+                                    <div
+                                        onClick={() => setNewCategory(prev => ({ ...prev, status: !prev.status }))}
+                                        className={`p-8 rounded-[36px] cursor-pointer transition-all border-2 flex items-center justify-between ${newCategory.status ? 'bg-emerald-50 border-emerald-100 shadow-emerald-500/5' : 'bg-slate-50 border-slate-100'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-5">
+                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${newCategory.status ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                                                <Activity size={24} />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-slate-900 uppercase italic font-['Outfit'] leading-none mb-1">Live Manifest</p>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none">Visible in public nodes</p>
+                                            </div>
+                                        </div>
+                                        <div className={`w-14 h-8 rounded-full relative transition-colors ${newCategory.status ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                                            <motion.div
+                                                animate={{ x: newCategory.status ? 24 : 4 }}
+                                                className="absolute top-1 w-6 h-6 bg-white rounded-full shadow-lg"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
                                         type="submit"
-                                        disabled={uploading || imgLoading}
-                                        className="flex items-center justify-between p-4 bg-gray-900 border border-transparent dark:bg-gray-700 text-white rounded-[20px] group transition-all hover:bg-orange-600 hover:scale-[1.02] active:scale-95 shadow-xl shadow-gray-200 dark:shadow-none"
+                                        className="w-full h-20 bg-slate-900 dark:bg-indigo-600 text-white rounded-[32px] font-[900] text-[12px] uppercase tracking-[0.4em] shadow-2xl shadow-indigo-600/20 flex items-center justify-center gap-4 italic"
                                     >
-                                        <div className="text-left">
-                                            <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1">Save Group</p>
-                                            <p className="text-[8px] font-bold text-gray-400 group-hover:text-white/80 uppercase">Index Node</p>
-                                        </div>
-                                        <span className="text-xl group-hover:translate-x-1 transition-transform">💾</span>
-                                    </button>
-                                </div>
-                                <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest text-center italic mt-2">
-                                    {imgLoading ? 'Synchronizing Visual Data...' : 'Global distribution console active'}
-                                </p>
+                                        <CheckCircle2 size={24} strokeWidth={3} /> {editingId ? 'Save Changes' : 'Activate Category'}
+                                    </motion.button>
+                                </form>
                             </div>
-                        </form>
+                        </motion.div>
                     </div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
         </div>
     );
 };
